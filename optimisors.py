@@ -1,11 +1,5 @@
 import numpy as np
-
-
-def generate_batch_data(data, labels, batch_size):
-    batch_indices = np.random.choice(np.arange(data.shape[0]),  # or simply X.shape[0]
-                                     batch_size,
-                                     replace=False)
-    return data[batch_indices, :], labels[batch_indices]
+from manipulate_data import generate_batch_data
 
 
 def SDG(data, labels, init_params, loss_func=None,

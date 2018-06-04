@@ -1,11 +1,10 @@
 from __future__ import print_function
-
 import _pickle as pickle
 import argparse
 import math
 import numpy as np
 from active_functions import Softmax
-from load_mnist import load_dataset, augment_1s_col
+from manipulate_data import load_mnist, augment_1s_col
 from optimisors import SDG
 
 
@@ -21,11 +20,10 @@ class SoftmaxClassifier(object):
         self.params = np.random.uniform(-limit, limit, self.param_shape)
         print('init params shape %s, limit %f' % (str(self.params.shape), limit))
 
-
     def softmax(self, X, params):
         softmax_func = Softmax()
         return softmax_func(X.dot(params))
-        #return softmax_func(np.append(X, 1).dot(params))
+        # return softmax_func(np.append(X, 1).dot(params))
 
     def batch_softmax_loss(self, l2_reg):
         def loss_func(data, labels, params):
@@ -37,12 +35,12 @@ class SoftmaxClassifier(object):
             # patched_data = np.apply_along_axis(lambda X: np.append(X, 1), -1, data)
             softmax_array = np.apply_along_axis(lambda X: self.softmax(X, params), -1, data)
 
-            #print(softmax_array)
+            # print(softmax_array)
             # print (patched_data.shape, params.shape, softmax_array.shape)
 
             n_data = data.shape[0]
             neg_log_probs = -np.log(softmax_array[range(n_data), labels])
-             #print(neg_log_probs, labels)
+            # print(neg_log_probs, labels)
             loss = np.sum(neg_log_probs) / n_data \
                 + l2_reg * np.sum(params * params) / 2  # L2 regulation
 
@@ -78,7 +76,7 @@ class SoftmaxClassifier(object):
 
         params = self.params.copy()
         best_val_loss = np.inf
-        loss_func = self.batch_softmax_loss(0.0000)
+        loss_func = self.batch_softmax_loss(0.00001)
         print('start training..')
         while epoch < max_epoch and not done:
             epoch += 1
@@ -120,11 +118,13 @@ class SoftmaxClassifier(object):
     def save(self, filepath):
         with open(filepath, 'wb') as f:
             pickle.dump(self, f)
+            print('save trained parameters from %s' % filepath)
 
     def load(self, filepath):
         with open(filepath, 'rb') as f:
             model = pickle.load(f)
             self.params = model.params
+            print('load trained parameters from %s' % filepath)
 
 
 if __name__ == '__main__':
@@ -137,12 +137,17 @@ if __name__ == '__main__':
     args = argparser.parse_args()
     np.random.seed(101)
 
-    train_set, val_set, test_set = load_dataset()
-    print('data loaded...')
+    train_set, val_set, test_set = load_mnist()
+    print('mnist data loaded...')
     classifier = SoftmaxClassifier()
     if args.type == 'train':
         classifier.train(train_set, val_set, args.batch_size, args.max_epoch)
         classifier.save(args.param_path)
     else:
         classifier.load(args.param_path)
-        classifier.predict(test_set)
+        data, labels = augment_1s_col(test_set[0]), test_set[1]
+        result = classifier.predict(data)
+        correct = np.sum(result == labels)
+        print("test set %d, correct %d, accuracy %f" % (labels.shape[0],
+                                                        correct,
+                                                        correct / labels.shape[0]))
