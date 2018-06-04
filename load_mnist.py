@@ -1,5 +1,6 @@
 import _pickle as pickle
 import gzip
+import numpy as np
 
 
 def load_dataset(path='data/mnist.pkl.gz'):
@@ -8,3 +9,7 @@ def load_dataset(path='data/mnist.pkl.gz'):
     """
     f = gzip.open(path, 'rb')
     return pickle.load(f, encoding='latin1')
+
+def augment_1s_col(dataset):
+    return np.hstack((np.ones((dataset.shape[0], 1)), dataset))
+

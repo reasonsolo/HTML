@@ -5,18 +5,18 @@ import argparse
 import math
 import numpy as np
 from active_functions import Softmax
-from load_mnist import load_dataset
+from load_mnist import load_dataset, augment_1s_col
 from optimisors import SDG
 
 
-class LogisticRegression(object):
-    def __init__(self, learning_rate=0.01):
+class SoftmaxClassifier(object):
+    def __init__(self, learning_rate=0.05):
         self.param = None
-        self.learning_rate = learning_rate
 
     def _init_param(self, X):
         # X shape (w*h,) 10 is the labels posibilitys
-        self.param_shape = (X.shape[0] + 1, 10)
+        # self.param_shape = (X.shape[0] + 1, 10)
+        self.param_shape = (X.shape[0], 10)
         limit = 1 / math.sqrt(self.param_shape[0])
         self.params = np.random.uniform(-limit, limit, self.param_shape)
         print('init params shape %s, limit %f' % (str(self.params.shape), limit))
@@ -34,30 +34,31 @@ class LogisticRegression(object):
             labels shape (a,) value in range[0, t-1]
             """
             # this should be of shape (a, t)
-            patched_data = np.apply_along_axis(lambda X: np.append(X, 1), -1, data)
-            softmax_array = np.apply_along_axis(lambda X: self.softmax(X, params), -1, patched_data)
+            # patched_data = np.apply_along_axis(lambda X: np.append(X, 1), -1, data)
+            softmax_array = np.apply_along_axis(lambda X: self.softmax(X, params), -1, data)
 
             #print(softmax_array)
             # print (patched_data.shape, params.shape, softmax_array.shape)
 
             n_data = data.shape[0]
             neg_log_probs = -np.log(softmax_array[range(n_data), labels])
+             #print(neg_log_probs, labels)
             loss = np.sum(neg_log_probs) / n_data \
                 + l2_reg * np.sum(params * params) / 2  # L2 regulation
 
             d_param = softmax_array
             # minus 1 for each correct probability
             d_param[range(n_data), labels] -= 1
-            d_param = np.dot(patched_data.T, d_param) / n_data
+            d_param = np.dot(data.T, d_param) / n_data
             # print(d_param.shape)
-            d_param += d_param * l2_reg
+            d_param += params * l2_reg
 
             return loss, d_param
         return loss_func
 
     def train(self, train_set, val_set, mini_batch=32,
-              max_epoch=10000, learning_rate=0.1):
-        data, labels = train_set
+              max_epoch=10000, learning_rate=0.05):
+        data, labels = augment_1s_col(train_set[0]), train_set[1]
         self._init_param(data[0])
         self.loss = None
         epoch = 0
@@ -72,12 +73,12 @@ class LogisticRegression(object):
         improve_threshold = 0.995
         validation_freq = min(val_num, patience // 2)
 
-        train_data, train_labels = train_set
-        val_data, val_labels = val_set
+        train_data, train_labels = augment_1s_col(train_set[0]), train_set[1]
+        val_data, val_labels = augment_1s_col(val_set[0]), val_set[1]
 
         params = self.params.copy()
         best_val_loss = np.inf
-        loss_func = self.batch_softmax_loss(0.1)
+        loss_func = self.batch_softmax_loss(0.0000)
         print('start training..')
         while epoch < max_epoch and not done:
             epoch += 1
@@ -109,8 +110,9 @@ class LogisticRegression(object):
         return np.mean(np.not_equal(predict_labels, val_labels))
 
     def evaluate(self, data, params):
-        patched_data = np.apply_along_axis(lambda X: np.append(X, 1), -1, data)
-        return np.dot(patched_data, params).argmax(axis=-1)
+        # patched_data = np.apply_along_axis(lambda X: np.append(X, 1), -1, data)
+        # return np.dot(patched_data, params).argmax(axis=-1)
+        return np.dot(data, params).argmax(axis=-1)
 
     def predict(self, test_data):
         return self.evaluate(test_data, self.params)
@@ -120,7 +122,7 @@ class LogisticRegression(object):
             pickle.dump(self, f)
 
     def load(self, filepath):
-        with open(filepath, 'wb') as f:
+        with open(filepath, 'rb') as f:
             model = pickle.load(f)
             self.params = model.params
 
@@ -130,17 +132,17 @@ if __name__ == '__main__':
     argparser.add_argument('--max_epoch', default=10000, type=int)
     argparser.add_argument('--batch_size', default=32, type=int)
     argparser.add_argument('--type', default='train', type=str)
-    argparser.add_argument('--param_path', default='logis_reg.pkl', type=str)
+    argparser.add_argument('--param_path', default='classifier.pkl', type=str)
 
     args = argparser.parse_args()
     np.random.seed(101)
 
     train_set, val_set, test_set = load_dataset()
     print('data loaded...')
-    logis_reg = LogisticRegression()
+    classifier = SoftmaxClassifier()
     if args.type == 'train':
-        logis_reg.train(train_set, val_set, args.batch_size, args.max_epoch)
-        logis_reg.save(args.param_path)
+        classifier.train(train_set, val_set, args.batch_size, args.max_epoch)
+        classifier.save(args.param_path)
     else:
-        logis_reg.load(args.param_path)
-        logis_reg.predict(test_set)
+        classifier.load(args.param_path)
+        classifier.predict(test_set)
