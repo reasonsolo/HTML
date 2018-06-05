@@ -20,3 +20,12 @@ def generate_batch_data(data, labels, batch_size):
                                      batch_size,
                                      replace=False)
     return data[batch_indices, :], labels[batch_indices]
+
+def batch_iterator(data, labels=None, batch_size=64):
+    total = data.shape[0]
+    for i in np.arange(0, total, batch_size):
+        begin, end = i, min(i + batch_size, total)
+        if labels is not None:
+            yield data[begin:end], labels[begin:end]
+        else:
+            yield data[begin:end]
