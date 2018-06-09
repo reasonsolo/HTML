@@ -14,3 +14,12 @@ class SquareLoss(Loss):
 
     def gradient(self, truth, predict):
         return truth - predict
+
+class CrossEntropyLoss(Loss):
+    def __call__(self, y, p):
+        p = np.clip(p, 1e-15, 1 - 1e-15)
+        return - y * np.log(p) - (1 - y) * np.log(1 - p)
+
+    def gradient(self, y, p):
+        p = np.clip(p, 1e-15, 1 - 1e-15)
+        return - (y / p) + (1 - y) / (1 - p)

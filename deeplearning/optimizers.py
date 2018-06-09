@@ -33,14 +33,12 @@ class Adam(object):
     def update(self, W, dW):
         if self.m is None:
             self.m = np.zeros(np.shape(dW))
-            self.n = np.zeros(np.shape(dW))
+            self.v = np.zeros(np.shape(dW))
         self.m = self.b1 * self.m + (1 - self.b1) * dW
-        self.n = self.b2 * self.v + (1 - self.b2) * np.power(dW, 2)
+        self.v = self.b2 * self.v + (1 - self.b2) * np.power(dW, 2)
 
         m_hat = self.m / (1 - self.b1)
         v_hat = self.v / (1 - self.b2)
 
         w_update = self.learning_rate * m_hat / (np.sqrt(v_hat) + self.eps)
         return W - w_update
-
-

@@ -1,10 +1,10 @@
 import numpy as np
 from manipulate_data import batch_iterator
-
+from manipulate_data import augment_1s_col
 
 class NeuralNetwork():
     def __init__(self, optimizer, loss, val_set=None):
-        self.optimiser = optimizer
+        self.optimizer = optimizer
         self.layers = []
         self.errors = {'training': [], 'validation': []}
         self.loss_func = loss
@@ -16,8 +16,8 @@ class NeuralNetwork():
 
     def add(self, layer):
         if len(self.layers) > 0:
-            layer.set_input_layer(self.layers[-1].output_shape())
-        layer.init_param(optimiser=self.optimiser)
+            layer.set_input_shape(self.layers[-1].output_shape())
+        layer.init_param(optimizer=self.optimizer)
         self.layers.append(layer)
 
     def train_with_batch(self, data, labels):
@@ -52,6 +52,7 @@ class NeuralNetwork():
     def _forward_pass(self, data, training=True):
         layer_input = data
         for layer in self.layers:
+            print(layer_input.shape)
             layer_input = layer.forward_pass(layer_input, training)
         return layer_input
 
