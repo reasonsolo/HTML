@@ -42,25 +42,30 @@ class DenseLayer(Layer):
         self.n_units = n_units
         self.trainable = True
         self.W = None
+        self.b = None
 
     def init_param(self, optimizer):
         param_size = self.input_shape[-1] + 1
         limit = 1 / math.sqrt(param_size)
         self.W = np.random.uniform(-limit, limit, (param_size, self.n_units))
-        self.optimizer = copy.copy(optimizer)
+        self.b = np.random.uniform(-limit, limit, (self.n_units))
+        self.w_optimizer = copy.copy(optimizer)
+        self.b_optimiser = copy.copy(optimizer)
 
     def parameter_size(self):
         return np.prod(self.W.shape)
 
     def forward_pass(self, data, training=True):
-        self.input = augment_1s_col(data)
-        return np.dot(self.input, self.W)
+        self.input = data
+        return np.dot(self.input, self.W) + self.b
 
     def backward_pass(self, accum_grad):
         W = self.W
         if self.trainable:
             dW = np.dot(self.input.T, accum_grad)
-            self.W = self.optimizer.update(self.W, dW)
+            db = np.sum(accum_grad, axis=0, keepdims=True)
+            self.W = self.w_optimizer.update(self.W, dW)
+            self.b = self.b_optimiser.update(self.b, db)
         accum_grad = np.dot(accum_grad, W.T)
         return accum_grad
 
