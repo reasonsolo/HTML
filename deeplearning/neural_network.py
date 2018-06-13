@@ -44,7 +44,7 @@ class NeuralNetwork():
             if self.val_set is not None:
                 val_loss = self.test_with_batch(self.val_set[0], self.val_set[1])
                 self.errors['validation'].append(val_loss)
-            print("epoch %d, train loss %f, validation loss %s" % (i, np.mean(batch_error), str(val_loss)))
+            print("epoch %d, validation loss %s" % (i, str(np.mean(val_loss))))
 
     def predict(self, data):
         return self._forward_pass(data, training=False)
@@ -52,7 +52,6 @@ class NeuralNetwork():
     def _forward_pass(self, data, training=True):
         layer_input = data
         for layer in self.layers:
-            print(layer_input.shape)
             layer_input = layer.forward_pass(layer_input, training)
         return layer_input
 

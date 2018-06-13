@@ -45,7 +45,7 @@ class DenseLayer(Layer):
         self.b = None
 
     def init_param(self, optimizer):
-        param_size = self.input_shape[-1] + 1
+        param_size = self.input_shape[-1]
         limit = 1 / math.sqrt(param_size)
         self.W = np.random.uniform(-limit, limit, (param_size, self.n_units))
         self.b = np.random.uniform(-limit, limit, (self.n_units))
@@ -118,10 +118,30 @@ class DropoutLayer(Layer):
         return data * c
 
     def backward_pass(self, accum_grad):
-        print(accum_grad.shape)
-
         return accum_grad * self.mask
 
     def output_shape(self):
         return self.input_shape
+
+
+class Conv2D(Layer):
+    def __init__(self, n_filters, filter_shape, input_shape=None, padding='same', stride=1):
+        self.n_filters = n_filters
+        self.filter_shape = filter_shape
+        self.input_shape = input_shape
+        self.padding = padding
+        self.stride = stride
+
+    def init_param(self, optimizer):
+        self.w_optimizer = copy.copy(optimizer)
+        self.b_optimizer = copy.copy(optimizer)
+        filter_w, filter_x = self.filter_shape
+
+
+# batch normalization
+# http://dengyujun.com/2017/09/30/understanding-batch-norm/
+class BatchNorm(Layer):
+    pass
+
+
 

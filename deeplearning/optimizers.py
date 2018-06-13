@@ -4,7 +4,7 @@ import numpy as np
 # optimizing methods, posted by S.Ruder, suggested by mlfromscratch
 # http://ruder.io/optimizing-gradient-descent/index.html
 class GradientDescent(object):
-    def __init__(self, learning_rate=0.1, momentum=0):
+    def __init__(self, learning_rate=0.01, momentum=0.1):
         self.w_update = None
         self.momentum = momentum
         self.learning_rate = learning_rate
@@ -42,3 +42,10 @@ class Adam(object):
 
         w_update = self.learning_rate * m_hat / (np.sqrt(v_hat) + self.eps)
         return W - w_update
+
+
+OPTIMIZERS = {
+    'sgd': GradientDescent,
+    'adam': Adam,
+}
+
