@@ -2,6 +2,7 @@ from __future__ import print_function, division
 from manipulate_data import augment_1s_col
 from active_functions import ReLU, Softmax, TanH, Sigmoid, LeakyReLU
 import numpy as np
+import scipy
 import copy
 import math
 
@@ -124,8 +125,28 @@ class DropoutLayer(Layer):
         return self.input_shape
 
 
+def padding_size(filter_shape, padding='same'):
+    if padding == 'valid':
+        return (0, 0), (0, 0)
+    if padding == 'same':
+        filter_w, filter_h = filter_shape
+        pad_w1 = int(math.floor((filter_w - 1) / 2))
+        pad_w1 = int(math.ceil((filter_w - 1) / 2))
+        pad_h1 = int(math.floor((filter_h - 1) / 2))
+        pad_h2 = int(math.ceil((filter_h - 1) / 2))
+        return (pad_w1, pad_w
+
+def conv2d(image, kernel, padding):
+    return scipy.convolve2d(image, kernel, padding)
+
+
 class Conv2D(Layer):
     def __init__(self, n_filters, filter_shape, input_shape=None, padding='same', stride=1):
+        # input shape should be [batch, width, height, channels]
+        print("input shape", input_shape)
+        assert(padding in ['same', 'valid'])
+        filter_w, filter_h = filter_shape
+        assert(filter_w == filter_h)
         self.n_filters = n_filters
         self.filter_shape = filter_shape
         self.input_shape = input_shape
@@ -135,7 +156,23 @@ class Conv2D(Layer):
     def init_param(self, optimizer):
         self.w_optimizer = copy.copy(optimizer)
         self.b_optimizer = copy.copy(optimizer)
-        filter_w, filter_x = self.filter_shape
+        filter_w, filter_h = self.filter_shape
+        channels = self.input_shape[-1]
+        limit = 1 / math.sqrt(np.prod(self.filter_shape))
+        # why init params like this?
+        # http://cs231n.github.io/neural-networks-2/#init
+        self.W = np.random.uniform(-limit, limit, size=(self.n_filters, filter_h, filter_w, channels))
+        self.b = np.zeros((self.n_filters, 1))
+
+    def parameters(self):
+        return np.prod(self.W.shape) + np.prod(self.b.shape)
+
+    def forward_pass(self, data, training=True):
+        batch_size, channels, height, width = data.shape
+        self.layer_input = data
+        output = conv2d(data,
+
+
 
 
 # batch normalization
