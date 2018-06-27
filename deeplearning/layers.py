@@ -131,10 +131,10 @@ def padding_size(filter_shape, padding='same'):
     if padding == 'same':
         filter_w, filter_h = filter_shape
         pad_w1 = int(math.floor((filter_w - 1) / 2))
-        pad_w1 = int(math.ceil((filter_w - 1) / 2))
+        pad_w2 = int(math.ceil((filter_w - 1) / 2))
         pad_h1 = int(math.floor((filter_h - 1) / 2))
         pad_h2 = int(math.ceil((filter_h - 1) / 2))
-        return (pad_w1, pad_w
+        return (pad_w1, pad_w2), (pad_h1, pad_h2)
 
 def conv2d(image, kernel, padding):
     return scipy.convolve2d(image, kernel, padding)
@@ -168,6 +168,8 @@ class Conv2D(Layer):
         return np.prod(self.W.shape) + np.prod(self.b.shape)
 
     def forward_pass(self, data, training=True):
+        # convolution 2d by reference
+        # https://wiseodd.github.io/techblog/2016/07/16/convnet-conv-layer/
         batch_size, channels, height, width = data.shape
         self.layer_input = data
         output = conv2d(data,
