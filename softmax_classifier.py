@@ -54,6 +54,13 @@ class SoftmaxClassifier(object):
             return loss, d_param
         return loss_func
 
+    def simple_train(self, data, labels):
+        params = self.params.copy()
+        loss_func = self.batch_softmax_loss(0.00001)
+        loss, params = SDG(data, labels, params, loss_func)
+        self.params = params
+        return loss
+
     def train(self, train_set, val_set, mini_batch=32,
               max_epoch=10000, learning_rate=0.05):
         data, labels = augment_1s_col(train_set[0]), train_set[1]
@@ -64,7 +71,7 @@ class SoftmaxClassifier(object):
         iter = 0
 
         train_num = train_set[0].shape[0]
-        val_num = val_set[0].shape[0]
+        val_num = val_set[0].shape[0] if val_set is not None else 0
 
         patience = 5000
         patience_increase = 2
