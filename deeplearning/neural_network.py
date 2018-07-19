@@ -22,6 +22,8 @@ class NeuralNetwork():
 
     def train_with_batch(self, data, labels):
         predicts = self._forward_pass(data)
+        print("predicts shape ", predicts.shape)
+        print("labels shape ", labels.shape)
         loss = np.mean(self.loss_func(labels, predicts))
         loss_grad = self.loss_func.gradient(labels, predicts)
         self._backward_pass(loss_grad=loss_grad)

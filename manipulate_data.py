@@ -29,3 +29,8 @@ def batch_iterator(data, labels=None, batch_size=64):
             yield data[begin:end], labels[begin:end]
         else:
             yield data[begin:end]
+
+def indices_to_one_hot(data, class_count):
+    targets = np.array(data).reshape(-1)
+    return np.eye(class_count)[targets]
+

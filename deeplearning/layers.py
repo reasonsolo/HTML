@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 from manipulate_data import augment_1s_col
 from active_functions import ReLU, Softmax, TanH, Sigmoid, LeakyReLU
+from img_proc import image_to_column, column_to_image, determine_padding
 import numpy as np
 import scipy
 import copy
@@ -136,13 +137,14 @@ def padding_size(filter_shape, padding='same'):
         pad_h2 = int(math.ceil((filter_h - 1) / 2))
         return (pad_w1, pad_w2), (pad_h1, pad_h2)
 
+
 def conv2d(image, kernel, padding):
     return scipy.convolve2d(image, kernel, padding)
 
 
-class Conv2D(Layer):
+class Conv2DLayer(Layer):
     def __init__(self, n_filters, filter_shape, input_shape=None, padding='same', stride=1):
-        # input shape should be [batch, width, height, channels]
+        # input shape should be [batch, channel, width, height]
         print("input shape", input_shape)
         assert(padding in ['same', 'valid'])
         filter_w, filter_h = filter_shape
@@ -152,35 +154,89 @@ class Conv2D(Layer):
         self.input_shape = input_shape
         self.padding = padding
         self.stride = stride
+        self.trainable = True
 
     def init_param(self, optimizer):
         self.w_optimizer = copy.copy(optimizer)
         self.b_optimizer = copy.copy(optimizer)
         filter_w, filter_h = self.filter_shape
-        channels = self.input_shape[-1]
+        channels = self.input_shape[0]
         limit = 1 / math.sqrt(np.prod(self.filter_shape))
         # why init params like this?
         # http://cs231n.github.io/neural-networks-2/#init
-        self.W = np.random.uniform(-limit, limit, size=(self.n_filters, filter_h, filter_w, channels))
+        self.W = np.random.uniform(-limit, limit, size=(self.n_filters, channels, filter_h, filter_w))
         self.b = np.zeros((self.n_filters, 1))
 
-    def parameters(self):
+    def parameter_size(self):
         return np.prod(self.W.shape) + np.prod(self.b.shape)
 
-    def forward_pass(self, data, training=True):
+    def output_shape(self):
+        channels, h, w = self.input_shape
+        pad_h, pad_w = determine_padding(self.filter_shape, self.padding)
+        output_h = (h + np.sum(pad_h) - self.filter_shape[0]) / self.stride + 1
+        output_w = (w + np.sum(pad_w) - self.filter_shape[0]) / self.stride + 1
+
+        return self.n_filters, int(output_h), int(output_w)
+
+    def forward_pass(self, X, training=True):
         # convolution 2d by reference
         # https://wiseodd.github.io/techblog/2016/07/16/convnet-conv-layer/
-        batch_size, channels, height, width = data.shape
-        self.layer_input = data
-        output = conv2d(data,
+        batch_size, channels, height, width = X.shape
+        self.layer_input = X
+        print("X %s" % str(X.shape))
+        print("W %s" % str(self.W.shape))
+        self.X_col = image_to_column(X, self.filter_shape, self.stride, self.padding)
+        print("x col %s" % str(self.X_col.shape))
+        self.W_col = self.W.reshape((self.n_filters, np.prod(self.filter_shape)))
+        print("w col %s" % str(self.W_col.shape))
+        output = self.W_col.dot(self.X_col) + self.b
+        # Reshape into (n_filters, out_height, out_width, batch_size)
+        output = output.reshape(self.output_shape() + (batch_size, ))
+        #output = conv2d(X,
+        return output.transpose(3, 0, 1, 2)
+
+    def backward_pass(self, accum_grad):
+        accum_grad  = accum_grad.transpose(1, 2, 3, 0).reshape(self.n_filters, -1)
+        if self.trainable:
+            grad_w = accum_grad.dot(self.W_col.T).reshape(self.W.shape)
+            grad_b = np.sum(accum_grad, axis=1, keepDims=True)
+            self.W = self.w_optimiser.update(self.W, grad_w)
+            self.b = self.b_optimiser.update(self.b, grad_b)
+
+        accum_grad = self.W_col.T.dot(accum_grad)
+        accum_grad = column_to_image(accum_grad, self.layer_input.shape,
+                                     self.filter_shape, self.stride, self.padding)
+
+        return accum_grad
 
 
-
-
-# batch normalization
-# http://dengyujun.com/2017/09/30/understanding-batch-norm/
-class BatchNorm(Layer):
+class BatchNormLayer(Layer):
+    """
+    batch normalization
+    http://dengyujun.com/2017/09/30/understanding-batch-norm/
+    """
     pass
 
 
+class FlattenLayer(Layer):
+    """
+    convert multi-dimension matrix to 2-dimension matrix
+    """
+    def __init__(self, input_shape=None):
+        self.prev_shape = None
+        self.trainable = True
+        self.input_shape = input_shape
 
+    def forward_pass(self, X, training=True):
+        self.prev_shape = X.shape
+        return X.reshape((X.shape[0], -1))
+
+    def backward_pass(self, accum_grad):
+        return accum_grad.reshape(self.prev_shape)
+
+    def output_shape(self):
+        return (np.prod(self.input_shape),)
+
+
+class ArgmaxLayer(Layer):
+    pass
