@@ -183,12 +183,8 @@ class Conv2DLayer(Layer):
         # https://wiseodd.github.io/techblog/2016/07/16/convnet-conv-layer/
         batch_size, channels, height, width = X.shape
         self.layer_input = X
-        print("X %s" % str(X.shape))
-        print("W %s" % str(self.W.shape))
         self.X_col = image_to_column(X, self.filter_shape, self.stride, self.padding)
-        print("x col %s" % str(self.X_col.shape))
         self.W_col = self.W.reshape((self.n_filters, np.prod(self.filter_shape)))
-        print("w col %s" % str(self.W_col.shape))
         output = self.W_col.dot(self.X_col) + self.b
         # Reshape into (n_filters, out_height, out_width, batch_size)
         output = output.reshape(self.output_shape() + (batch_size, ))
@@ -198,10 +194,10 @@ class Conv2DLayer(Layer):
     def backward_pass(self, accum_grad):
         accum_grad  = accum_grad.transpose(1, 2, 3, 0).reshape(self.n_filters, -1)
         if self.trainable:
-            grad_w = accum_grad.dot(self.W_col.T).reshape(self.W.shape)
-            grad_b = np.sum(accum_grad, axis=1, keepDims=True)
-            self.W = self.w_optimiser.update(self.W, grad_w)
-            self.b = self.b_optimiser.update(self.b, grad_b)
+            grad_w = accum_grad.dot(self.X_col.T).reshape(self.W.shape)
+            grad_b = np.sum(accum_grad, axis=1, keepdims=True)
+            self.W = self.w_optimizer.update(self.W, grad_w)
+            self.b = self.b_optimizer.update(self.b, grad_b)
 
         accum_grad = self.W_col.T.dot(accum_grad)
         accum_grad = column_to_image(accum_grad, self.layer_input.shape,

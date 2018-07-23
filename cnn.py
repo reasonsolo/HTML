@@ -27,15 +27,16 @@ def main():
     train_set, val_set, test_set = load_mnist()
 
     X_train, Y_train = train_set
+    X_val, Y_val = val_set
     X_test, Y_test = test_set
     print (X_train.shape)
     X_train = X_train.reshape((X_train.shape[0], 1, img_size, img_size))
     X_test = X_test.reshape((X_test.shape[0], 1, img_size, img_size))
+    X_val = X_val.reshape((X_val.shape[0], 1, img_size, img_size))
     Y_train = indices_to_one_hot(Y_train, 10)
+    Y_val = indices_to_one_hot(Y_val, 10)
 
-    print (X_train.shape)
-    print (Y_train.shape)
-    net.train(X_train, Y_train, epochs=50)
+    net.train(X_train, Y_train, epochs=50, batch_size=64, val_data=X_val, val_labels=Y_val)
     result = net.predict(X_test)
     Y_predict = np.argmax(result, axis=1)
     correct = np.sum(Y_predict == Y_test)

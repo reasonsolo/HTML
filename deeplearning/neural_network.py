@@ -22,8 +22,6 @@ class NeuralNetwork():
 
     def train_with_batch(self, data, labels):
         predicts = self._forward_pass(data)
-        print("predicts shape ", predicts.shape)
-        print("labels shape ", labels.shape)
         loss = np.mean(self.loss_func(labels, predicts))
         loss_grad = self.loss_func.gradient(labels, predicts)
         self._backward_pass(loss_grad=loss_grad)
@@ -34,7 +32,7 @@ class NeuralNetwork():
         loss = np.mean(self.loss_func(labels, predicts))
         return loss
 
-    def train(self, train_set, train_labels, epochs=1000, batch_size=64):
+    def train(self, train_set, train_labels, epochs=1000, batch_size=64, val_data=None, val_labels=None):
         for i in range(epochs):
             batch_error = []
             for batch, labels in batch_iterator(train_set, train_labels, batch_size):
@@ -43,10 +41,10 @@ class NeuralNetwork():
             self.errors['training'].append(batch_error)
 
             val_loss = None
-            if self.val_set is not None:
-                val_loss = self.test_with_batch(self.val_set[0], self.val_set[1])
+            if val_data is not None:
+                val_loss = self.test_with_batch(val_data, val_labels)
                 self.errors['validation'].append(val_loss)
-            print("epoch %d, validation loss %s" % (i, str(np.mean(val_loss))))
+                print("epoch %d, validation loss %s" % (i, str(np.mean(val_loss))))
 
     def predict(self, data):
         return self._forward_pass(data, training=False)
