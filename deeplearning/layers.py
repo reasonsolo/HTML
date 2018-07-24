@@ -234,5 +234,55 @@ class FlattenLayer(Layer):
         return (np.prod(self.input_shape),)
 
 
+class PoolingLayer(Layer):
+    """
+    base class for avg-layer and max-layer
+    """
+    def __init__(self, pool_shape=(2, 2), stride=1, padding='same'):
+        self.pool_shape = pool_shape
+        self.stride = stride
+        self.padding = padding
+
+    def forward_pass(self, X, training=True):
+        self.layer_input = X
+        batch, channels, height, width = X.shape
+        _, out_height, out_width = self.output_shape()
+        X = X.reshape(batch * channels, 1, height, width)
+        X_col = image_to_column(X, self.pool_shape, self.stride, self.padding)
+        output = self._pool_forward(X_col)
+        output = output.reshape(out_height, out_width, batch, channels)
+        return output.transpose(2, 3, 0, 1)
+
+    def backward_pass(self, accum_grad):
+        batch, _, _, _ = accum_grad.shape
+        channels, height, width = self.input_shape
+        accum_grad = accum_grad.transpose(2, 3, 0, 1).reshape(-1)
+        accum_grad_col = self._pool_backward(accum_grad)
+        accum_grad = column_to_image(accum_grad_col,
+                                     (batch * channels, 1, height, width),
+                                     self.pool_shape, self.stride, self.padding)
+        accum_grad = accum_grad.reshape((batch, ) + self.input_shape)
+        return accum_grad
+
+    def output_shape(self):
+        channels, h, w = self.input_shape
+        pad_h, pad_w = determine_padding(self.pool_shape, self.padding)
+        output_h = (h + np.sum(pad_h) - self.pool_shape[0]) / self.stride + 1
+        output_w = (w + np.sum(pad_w) - self.pool_shape[0]) / self.stride + 1
+
+        return channels, int(output_h), int(output_w)
+
+
+class MaxPoolingLayer(PoolingLayer):
+    def _pool_forward(self, X_col):
+        self.arg_max = np.argmax(X_col, axis=0).flatten()
+        return X_col[self.arg_max, range(self.arg_max.size)]
+
+    def _pool_backward(self, accum_grad):
+        accum_grad_col = np.zeros((np.prod(self.pool_shape), accum_grad.size))
+        accum_grad_col[self.arg_max, range(accum_grad.size)] = accum_grad
+        return accum_grad_col
+
+
 class ArgmaxLayer(Layer):
     pass

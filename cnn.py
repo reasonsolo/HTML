@@ -1,5 +1,5 @@
 from deeplearning.neural_network import NeuralNetwork
-from deeplearning.layers import DenseLayer, ActiveLayer, Conv2DLayer, FlattenLayer
+from deeplearning.layers import DenseLayer, ActiveLayer, Conv2DLayer, FlattenLayer, MaxPoolingLayer
 from deeplearning.optimizers import Adam
 from deeplearning.loss_functions import CrossEntropyLoss
 from manipulate_data import load_mnist, augment_1s_col, indices_to_one_hot
@@ -16,7 +16,8 @@ def main():
                         stride=1, input_shape=(1, img_size, img_size),
                         padding='same'))
     net.add(ActiveLayer('relu'))
-    net.add(FlattenLayer(10))
+#    net.add(MaxPoolingLayer())
+    net.add(FlattenLayer())
     net.add(DenseLayer(32))
     net.add(DenseLayer(10))
     net.add(ActiveLayer('softmax'))
@@ -36,7 +37,7 @@ def main():
     Y_train = indices_to_one_hot(Y_train, 10)
     Y_val = indices_to_one_hot(Y_val, 10)
 
-    net.train(X_train, Y_train, epochs=50, batch_size=64, val_data=X_val, val_labels=Y_val)
+    net.train(X_train, Y_train, epochs=5, batch_size=32, val_data=X_val, val_labels=Y_val)
     result = net.predict(X_test)
     Y_predict = np.argmax(result, axis=1)
     correct = np.sum(Y_predict == Y_test)
