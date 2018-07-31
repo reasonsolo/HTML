@@ -211,7 +211,61 @@ class BatchNormLayer(Layer):
     batch normalization
     http://dengyujun.com/2017/09/30/understanding-batch-norm/
     """
-    pass
+    def __init__(self, input_shape=None, momentum=0.99):
+        self.input_shape = input_shape
+        self.momentum = momentum
+        self.trainable = True
+        self.eps = 0.01
+        self.running_mean = None
+        self.running_var = None
+
+    def init_param(self, optimizer):
+        self.gamma = np.zeros(self.input_shape)
+        self.beta  = np.zeros(self.input_shape)
+        self.gamma_opt = copy.copy(optimizer)
+        self.beta_opt = copy.copy(optimizer)
+
+    def parameter_size(self):
+        return np.prod(self.gamma.shape) + np.prod(self.beta.shape)
+
+    def forward_pass(self, X, training=True):
+        if self.running_mean is None:
+            self.running_mean = np.mean(X, axis=0)
+            self.running_var = np.var(X, axis=0)
+
+        if training and self.trainable:
+            mean = np.mean(X, axis=1)
+            var = np.mean(X, axis=1)
+            self.running_mean = self.momentum * self.running_mean + (1 - self.momentum) * mean
+            self.running_var = self.momentum * self.running_var + (1 - self.momentum) * var
+        else:
+            mean = self.running_mean
+            var = self.running_var
+
+        self.X_centered = X - mean
+        self.stddev_inv = 1 / np.sqrt(var + self.eps)
+        self.X_norm = self.X_centered * self.stddev_inv
+
+        return self.gamma * self.X_norm + self.beta
+
+    def backward_pass(self, accum_grad):
+        gamma = self.gamma
+        if self.trainable:
+            gamma_grad = np.sum(accum_grad * self.X_norm, axis=0)
+            beta_grad = np.sum(accum_grad, axis=0)
+            self.gamma = self.gamma_opt.update(self.gamma, gamma_grad)
+            self.beta = self.beta_opt.update(self.beta, beta_grad)
+
+        batch_size = accum_grad.shape[0]
+        accum_grad = (1 / batch_size) * gamma * self.stddev_inv \
+                     * (batch_size * accum_grad - np.sum(accum_grad, axis=0) \
+                        - self.X_centered * self.stddev_inv**2 \
+                        * np.sum(accum_grad * self.X_centered, axis=0))
+
+        return accum_grad
+
+    def output_shape(self):
+        return self.input_shape
 
 
 class FlattenLayer(Layer):
@@ -238,7 +292,7 @@ class PoolingLayer(Layer):
     """
     base class for avg-layer and max-layer
     """
-    def __init__(self, pool_shape=(2, 2), stride=1, padding='same'):
+    def __init__(self, pool_shape=(2, 2), stride=1, padding='valid'):
         self.pool_shape = pool_shape
         self.stride = stride
         self.padding = padding

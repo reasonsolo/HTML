@@ -1,5 +1,6 @@
 from deeplearning.neural_network import NeuralNetwork
-from deeplearning.layers import DenseLayer, ActiveLayer, Conv2DLayer, FlattenLayer, MaxPoolingLayer
+from deeplearning.layers import DenseLayer, ActiveLayer, Conv2DLayer, FlattenLayer,\
+    MaxPoolingLayer, BatchNormLayer
 from deeplearning.optimizers import Adam
 from deeplearning.loss_functions import CrossEntropyLoss
 from manipulate_data import load_mnist, augment_1s_col, indices_to_one_hot
@@ -16,7 +17,8 @@ def main():
                         stride=1, input_shape=(1, img_size, img_size),
                         padding='same'))
     net.add(ActiveLayer('relu'))
-#    net.add(MaxPoolingLayer())
+    #net.add(MaxPoolingLayer())
+    net.add(BatchNormLayer())
     net.add(FlattenLayer())
     net.add(DenseLayer(32))
     net.add(DenseLayer(10))
